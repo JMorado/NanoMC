@@ -1,0 +1,20 @@
+atomistic                ! swcnt model
+nvt                      ! ensemble
+nanotube-10-10-200.xyz
+175 482
+5000000                   ! number of MC sweeps
+300.0                    ! temperature
+491.90242935
+6.78                     ! swcnt radius
+12.0                     ! fluid_cut_off
+12.0                     ! fluid_cnt_cut_off
+2.96                     ! sigma LJ 12-6 fluid
+34.2                     ! epsilon LJ 12-6 fluid
+3.18                     ! sigma fluid-C
+30.95	                 ! epsilon fluid-CNT
+mjoao                 ! outputseed
+995293                 ! random generator seed
+100000                    ! frequency of trajectory writting
+100000                    ! frequency of properties writting
+random                   ! mode to generate initial configuration
+
