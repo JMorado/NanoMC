@@ -1,8 +1,8 @@
 #Current make system
 # Paths
-BIN=./bin/
+BIN=./_bin/
 SOURCE=./src/
-BUILD=./build/
+BUILD=./_build/
 
 # The compiler
 FC = gfortran
@@ -20,7 +20,7 @@ PROGRAMS = nanomc_nvt.exe nanomc_uvt.exe
 PROGRAMS_PATH=$(addprefix $(BIN), $(PROGRAMS))
 
 # "make" builds all
-all: $(PROGRAMS_PATH)
+all: directories $(PROGRAMS_PATH)
 
 # Linking modules
 $(BUILD)std_output_module.o: $(BUILD)simulation_module.o
@@ -59,5 +59,5 @@ clean:
 veryclean: clean
 	rm -f *~ $(PROGRAMS_PATH)
 
-
-
+directories:
+	mkdir -p $(BUILD) $(BIN)
