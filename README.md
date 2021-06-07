@@ -7,7 +7,7 @@
                                             
     
     
-NanoMC is a software for the simulation of Lennard-Jones fluids inside nanotubes.
+NanoMC is a software that simulates Lennard-Jones fluids inside nanotubes.
 
                                     
 ### Features:
