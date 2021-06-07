@@ -17,6 +17,110 @@
 !!! TODO: mc_exchange_cavity_biased
 !!! TODO: is_in_cavity
 
+SUBROUTINE generate_reduced_units(this)
+    IMPLICIT NONE
+    !------------------------------------------------------------------------
+    ! This subroutines makes the program to work with reduced unit by
+    ! transforming variables like the temperature, SWCNT length, radius
+    ! and LJ 12-6 parameters into reduced variables.
+    ! TODO: confirm that everything is working properly. I think it is not
+    ! TODO: JoaoMorado. It was not 17.12.2018
+    !------------------------------------------------------------------------
+    CLASS(Simulation), INTENT(INOUT) :: this
+
+    WRITE(6,*) "Old variables:"
+    WRITE(6,*) "T=", this%temperature
+    WRITE(6,*) "L=", this%length
+    WRITE(6,*) "r=", this%radius
+    WRITE(6,*) "sigma_cnt=", this%sigma_cnt
+    WRITE(6,*) "eps_cnt=", this%eps_cnt
+
+
+    ! Technically we do not multiply by the Boltzmann
+    ! because it cancels in the acceptance probability
+
+    this%temperature = this%temperature  / this%eps_fluid
+    this%length      = this%length / this%sigma_fluid
+    this%radius      = this%radius / this%sigma_fluid
+
+    ! Scale CNT interaction parameters
+    this%sigma_cnt   = this%sigma_cnt / this%sigma_fluid
+    this%eps_cnt     = this%eps_cnt   / this%eps_fluid
+
+
+
+    WRITE(6,*) "New reduced variables:"
+    WRITE(6,*) "T*=", this%temperature
+    WRITE(6,*) "L*=", this%length
+    WRITE(6,*) "r*=", this%radius
+    WRITE(6,*) "sigma_cnt*=", this%sigma_cnt
+    WRITE(6,*) "eps_cnt*=", this%eps_cnt
+END SUBROUTINE generate_reduced_units
+
+FUNCTION virial_local(simulation_instance, k) RESULT(virial)
+    !-------------------------------------------------------------
+    ! Computes the virial
+    !-----------------------------------------------------------
+    IMPLICIT NONE
+    ! Input class
+    TYPE(Simulation), INTENT(IN) :: simulation_instance
+    ! Intermediate variables
+    INTEGER(4), INTENT(IN) :: k
+    INTEGER(4) :: l
+    REAL(8) :: r(3), r2
+    REAL(8) :: attract_term, rep_term
+    REAL(8) :: sigmaf2, sigmacnt2
+    ! Output variable
+    REAL(8) :: virial
+
+
+    sigmaf2 = simulation_instance%sigma_fluid*simulation_instance%sigma_fluid          ! Sigma fluid squared
+    sigmacnt2 = simulation_instance%sigma_cnt*simulation_instance%sigma_cnt            ! Sigma CNT squared
+
+    virial = 0
+
+    DO l=k+1,simulation_instance%npart
+        ! Compute distance r
+        r = simulation_instance%coord(:,k)-simulation_instance%coord(:,l)
+        ! Apply PBC to r
+        CALL pbc_z_distance(r, simulation_instance%length)
+
+        ! Compute r squared of the periodic distance
+        r2 = SUM(r*r)
+
+
+        IF (r2 .lt. simulation_instance%fluid_cut_off * simulation_instance%fluid_cut_off) THEN
+            attract_term = (sigmaf2 / r2) * (sigmaf2 / r2) * (sigmaf2 / r2)
+            rep_term = attract_term * attract_term
+            virial = virial + 48 * simulation_instance%eps_fluid * (rep_term - 0.5 * attract_term) !/ SQRT(r2)
+        END IF
+    END DO
+
+
+    DO l=1,simulation_instance%ncnt
+        ! Compute distance r
+        r = simulation_instance%coord(:,k)-simulation_instance%coord_cnt(:,l)
+        ! Apply PBC to r
+        CALL pbc_z_distance(r, simulation_instance%length)
+
+        ! Compute r squared of the periodic distance
+        r2 = SUM(r*r)
+
+        ! If within cut off
+        IF (r2 .lt. simulation_instance%cnt_cut_off * simulation_instance%cnt_cut_off) THEN
+            attract_term = (sigmacnt2 / r2) * (sigmacnt2 / r2) * (sigmacnt2 / r2)
+            rep_term = attract_term * attract_term
+            virial = virial + 48 * simulation_instance%eps_cnt * (rep_term - 0.5 * attract_term) ! / SQRT(r2)!
+        END IF
+    END DO
+
+    virial = (1.0d0/6.0d0) * virial
+
+    RETURN
+
+END FUNCTION virial_local
+
+
   SUBROUTINE move_type(this, o, dr)
     IMPLICIT NONE
     CLASS(Simulation), INTENT(INOUT)    :: this

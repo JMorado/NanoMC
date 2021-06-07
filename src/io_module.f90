@@ -1,307 +1,326 @@
 MODULE io_module
-  USE simulation_module
-  IMPLICIT NONE
+    USE simulation_module
+    USE constants_module
+    USE cell_module
+    IMPLICIT NONE
 
-  REAL(8), PARAMETER :: kb = 1.38064852d-23          ! m^2 kg s^-2 K-1
-  REAL(8), PARAMETER :: planck = 6.62607004d-34      ! m^2 kg s^-1
-  REAL(8), PARAMETER :: pi= 4.0d0 * ATAN(1.0d0)
+CONTAINS
+    SUBROUTINE read_input(simulation_instance, input_file)
+        !========================================================================!
+        ! This functions read the input NanoMC file                              !
+        !------------------------------------------------------------------------!
+        ! simulation_instance (in) : Simulation instance                         !
+        ! input_file          (in) : name of the NanoMC input file               !
+        !========================================================================!
+        IMPLICIT NONE
+        TYPE(Simulation),  INTENT(INOUT) :: simulation_instance
+        CHARACTER(LEN=50), INTENT(IN)    :: input_file
+        INTEGER(4)                       :: input_seed
 
+        input_seed = 100
+        OPEN(input_seed,file=input_file)
 
-  CONTAINS
-    SUBROUTINE read_input(this, input_file)
-      IMPLICIT NONE
-      !------------------------------------------------------------------------
-      ! This subroutine reads the input file.
-      !-------------------------------------------------------------------------
-      CLASS(Simulation), INTENT(INOUT) :: this
-      CHARACTER(LEN=50), INTENT(IN)    :: input_file
-      INTEGER(4)                       :: input_seed
+        ! Simulation variables
+        READ(input_seed,*) simulation_instance%model
+        READ(input_seed,*) simulation_instance%displacement_type
+        READ(input_seed,*) simulation_instance%ensemble
 
-
-      input_seed = 100
-      OPEN(input_seed,file=input_file)
-
-      ! Simulation variables
-      READ(input_seed,*) this%model
-      READ(input_seed,*) this%ensemble
-
-      ! Ensemble and Model specific output part
-      SELECT CASE (this%ensemble)
-         CASE ("nvt")
-            SELECT CASE (this%model)
+        ! Ensemble and Model specific output part
+        SELECT CASE (simulation_instance%ensemble)
+        CASE ("nvt")
+            SELECT CASE (simulation_instance%model)
             CASE ("atomistic")
-               READ(input_seed,*) this%cnt_file
+                READ(input_seed,*) simulation_instance%cnt_file
             END SELECT
 
-         CASE ("uvt")
-            READ(input_seed,*) this%chemical_pot
-            SELECT CASE (this%model)
+        CASE ("uvt")
+            READ(input_seed,*) simulation_instance%chemical_pot
+            SELECT CASE (simulation_instance%model)
             CASE ("atomistic")
-               READ(input_seed,*) this%cnt_file
+                READ(input_seed,*) simulation_instance%cnt_file
             END SELECT
-      END SELECT
+        END SELECT
 
-      READ(input_seed,*) this%npart
-      READ(input_seed,*) this%nsweeps
-      READ(input_seed,*) this%temperature
+        READ(input_seed,*) simulation_instance%npart
+        READ(input_seed,*) simulation_instance%nsweeps
+        READ(input_seed,*) simulation_instance%temperature
 
-      ! TODO: Joao Morado 17.12.2018
-      ! TODO: include xy and z boundary conditions
-      ! TODO: include different initial distribution generators
-      ! CNT parameters
-      READ(input_seed,*) this%length
-      READ(input_seed,*) this%radius
+        ! CNT parameters
+        READ(input_seed,*) simulation_instance%length
+        READ(input_seed,*) simulation_instance%radius
 
-      ! Lennard-Jones 12-6 parameters
-      READ(input_seed,*) this%fluid_cut_off
-      READ(input_seed,*) this%cnt_cut_off
-      READ(input_seed,*) this%sigma_fluid
-      READ(input_seed,*) this%eps_fluid
-      READ(input_seed,*) this%sigma_cnt
-      READ(input_seed,*) this%eps_cnt
+        ! Cell
+        simulation_instance%cell_instance = Cell()
+        READ(input_seed,*) simulation_instance%cell_instance%a, simulation_instance%cell_instance%b, &
+                simulation_instance%cell_instance%c, simulation_instance%cell_instance%alpha, &
+                simulation_instance%cell_instance%beta, simulation_instance%cell_instance%gamma
 
-      ! Seed variables
-      READ(input_seed,*) this%output_seed
-      READ(input_seed,*) this%seed
+        ! Lennard-Jones 12-6 parameters
+        READ(input_seed,*) simulation_instance%fluid_cut_off
+        READ(input_seed,*) simulation_instance%cnt_cut_off
+        READ(input_seed,*) simulation_instance%sigma_fluid
+        READ(input_seed,*) simulation_instance%eps_fluid
+        READ(input_seed,*) simulation_instance%sigma_cnt
+        READ(input_seed,*) simulation_instance%eps_cnt
 
-      ! Output variables
-      READ(input_seed,*) this%ntwx
-      READ(input_seed,*) this%ntpr
+        ! Seed variables
+        READ(input_seed,*) simulation_instance%output_seed
+        READ(input_seed,*) simulation_instance%seed
 
-      ! Input configuration variables
-      READ(input_seed,*) this%initial_config_type
+        ! Output variables
+        READ(input_seed,*) simulation_instance%ntwx
+        READ(input_seed,*) simulation_instance%ntpr
+
+        ! Input configuration variables
+        READ(input_seed,*) simulation_instance%initial_config_type
 
 
-      ! Read input file name if initial_config_mode is file
-      SELECT CASE (this%initial_config_type)
-      CASE("file")
-         READ(input_seed,*) this%initial_xyz_file
-      END SELECT
+        ! Read input file name if initial_config_mode is file
+        SELECT CASE (simulation_instance%initial_config_type)
+        CASE("file")
+            READ(input_seed,*) simulation_instance%initial_xyz_file
+        END SELECT
 
-      ! Close file
-      CLOSE(input_seed)
+        ! Close file
+        CLOSE(input_seed)
 
-      ! Compute input dependent variable
-      this%beta = 1.0d0 / (kb*this%temperature)
+        ! Compute input dependent variable
+        simulation_instance%beta = 1.0d0 / (kb*simulation_instance%temperature)
 
-      this%volume = pi * this%radius * this%radius * this%length
-      this%volume_eff = pi * (this%radius-this%sigma_cnt)**2 * this%length
-      this%density = this%npart / this%volume_eff
+        simulation_instance%volume = pi * simulation_instance%radius * simulation_instance%radius * simulation_instance%length
+        simulation_instance%volume_eff = pi * (simulation_instance%radius-simulation_instance%sigma_cnt)**2 &
+                * simulation_instance%length
+        simulation_instance%density = simulation_instance%npart / simulation_instance%volume_eff
 
-      SELECT CASE (this%ensemble)
-      CASE("uvt")
-         this%volume = pi * this%radius * this%radius * this%length
-         this%thermal_wav = (planck*planck*this%beta) / (2*pi*2*1.6737236d-27)
-         this%thermal_wav = (this%thermal_wav) ** (1/2.)
+        SELECT CASE (simulation_instance%ensemble)
+        CASE("uvt")
+            simulation_instance%volume = pi * simulation_instance%radius * simulation_instance%radius &
+                    * simulation_instance%length
+            simulation_instance%thermal_wav = (planck*planck*simulation_instance%beta) / (2*pi*2*1.6737236d-27)
+            simulation_instance%thermal_wav = (simulation_instance%thermal_wav) ** (1/2.)
 
-         write(6,*) this%chemical_pot, this%thermal_wav, this%beta
-         this%activity = exp(this%chemical_pot / this%temperature) / (this%thermal_wav ** 3.0)
-         this%pressure_reservoir = exp(this%chemical_pot/this%temperature) / (this%beta * this%thermal_wav ** 3.0) * 1e-5
-      END SELECT
+            write(6,*) simulation_instance%chemical_pot, simulation_instance%thermal_wav, simulation_instance%beta
+            simulation_instance%activity = exp(simulation_instance%chemical_pot / simulation_instance%temperature) &
+                    / (simulation_instance%thermal_wav ** 3.0)
+
+            simulation_instance%pressure_reservoir = exp(simulation_instance%chemical_pot/simulation_instance%temperature) &
+                    / (simulation_instance%beta * simulation_instance%thermal_wav ** 3.0) * 1e-5
+        END SELECT
     END SUBROUTINE read_input
 
-    SUBROUTINE read_initial_xyz(this, input_file)
-      IMPLICIT NONE
-      !------------------------------------------------------------------------
-      ! This subroutines read the initial configuration from a .xyz file.
-      ! It accepts .xyz files which contain both CNT and H atoms
-      ! with the requirement that the CNT comes first.
-      !------------------------------------------------------------------------
-      CLASS(Simulation), INTENT(INOUT) :: this
-      CHARACTER(LEN=50), INTENT(IN)    :: input_file
-      INTEGER(4)                       :: k, l
-      INTEGER(4)                       :: input_seed, xyz_nat
-      CHARACTER(LEN=2)                 :: dummy
-      REAL(8)                          :: tmp(3)
+    SUBROUTINE read_initial_xyz(simulation_instance, input_file)
+        !========================================================================!
+        ! This subroutines reads the initial configuration from a .xyz file      !
+        ! It accepts .xyz files which contain both CNT and H atoms               !
+        ! with the requirement that the CNT comes first.                         !
+        !------------------------------------------------------------------------!
+        ! simulation_instance (in) : Simulation instance                         !
+        ! input_file          (in) : name of the xyz file                        !
+        !========================================================================!
+        IMPLICIT NONE
+        TYPE(Simulation), INTENT(INOUT)  :: simulation_instance
+        CHARACTER(LEN=50), INTENT(IN)    :: input_file
+        INTEGER(4)                       :: k, l
+        INTEGER(4)                       :: input_seed, xyz_nat
+        CHARACTER(LEN=2)                 :: dummy
+        REAL(8)                          :: tmp(3)
 
-      
-      input_seed = 101
 
-      OPEN(input_seed, file=input_file)
+        input_seed = 101
 
-      READ(input_seed,*) xyz_nat
-      READ(input_seed,*)
+        OPEN(input_seed, file=input_file)
 
-      IF (xyz_nat .eq. this%npart) THEN
-         ! File only contains hydrogen atoms
-         DO k=1,this%npart
-            READ(input_seed,*) dummy, (this%coord(l,k),l=1,3)
-         END DO
-      ELSE
-         ! .xyz file contains the CNT, ignore it and just read the hydrogen molecules c.o.m.
-         READ(input_seed,*) dummy, (tmp(k),k=1,3)
-         IF (dummy .ne. "C") THEN
-            WRITE(6,*) "Number of hydrogen molecules not equal to the number of atoms in &
-                 the .xyz file and first atom type is not C."
-            WRITE(6,*) "If the CNT is present it has to come before the hydrogen molecules."
-         ELSE
-            DO k=2,(xyz_nat-this%npart)
-               READ(input_seed,*) dummy, (tmp(l),l=1,3)
+        READ(input_seed,*) xyz_nat
+        READ(input_seed,*)
+
+        IF (xyz_nat .eq. simulation_instance%npart) THEN
+            ! File only contains hydrogen atoms
+            DO k=1,simulation_instance%npart
+                READ(input_seed,*) dummy, (simulation_instance%coord(l,k),l=1,3)
             END DO
+        ELSE
+            ! .xyz file contains the CNT, ignore it and just read the hydrogen molecules c.o.m.
+            READ(input_seed,*) dummy, (tmp(k),k=1,3)
+            IF (dummy .ne. "C") THEN
+                WRITE(6,*) "Number of hydrogen molecules not equal to the number of atoms in &
+                        the .xyz file and first atom type is not C."
+                WRITE(6,*) "If the CNT is present it has to come before the hydrogen molecules."
+            ELSE
+                DO k=2,(xyz_nat-simulation_instance%npart)
+                    READ(input_seed,*) dummy, (tmp(l),l=1,3)
+                END DO
 
-            DO k=1,this%npart
-               READ(input_seed,*) dummy, (this%coord(l,k),l=1,3)
-            END DO
-         END IF
-      END IF
-      CLOSE(input_seed)
+                DO k=1,simulation_instance%npart
+                    READ(input_seed,*) dummy, (simulation_instance%coord(l,k),l=1,3)
+                END DO
+            END IF
+        END IF
+        CLOSE(input_seed)
     END SUBROUTINE read_initial_xyz
 
 
-    SUBROUTINE read_cnt_xyz(this)
-      IMPLICIT NONE
-      !------------------------------------------------------------------------
-      ! This subroutines read the CNT .xyz file.
-      ! The .xyz file name is stored in the this%cnt file variable.
-      ! The CNT atom number is stored in the this%cnt variable.
-      ! The CNT coordinates are stored in the this%coord_cnt(3,this%nct) array.
-      !------------------------------------------------------------------------
-      CLASS(Simulation), INTENT(INOUT) :: this
-      CHARACTER(LEN=20) :: dummy
-      INTEGER(4) :: k,l
+    SUBROUTINE read_cnt_xyz(simulation_instance)
+        !========================================================================!
+        ! This subroutines reads the CNT xyz file n from a .xyz file.            !
+        !------------------------------------------------------------------------!
+        ! simulation_instance (in) : Simulation instance                         !
+        !========================================================================!
+        IMPLICIT NONE
 
-      OPEN(101,file=this%cnt_file)
-      READ(101,*) this%ncnt
-      READ(101,*) dummy ! Dummy
-      ALLOCATE(this%coord_cnt(3,this%ncnt))
-      DO k=1,this%ncnt
-         READ(101,*) dummy, (this%coord_cnt(l,k),l=1,3)
-      END DO
-      CLOSE(101)
+        TYPE(Simulation), INTENT(INOUT) :: simulation_instance
+        CHARACTER(LEN=20) :: dummy
+        INTEGER(4) :: k,l
+
+        OPEN(101,file=simulation_instance%cnt_file)
+        READ(101,*) simulation_instance%ncnt
+        READ(101,*) dummy ! Dummy
+        ALLOCATE(simulation_instance%coord_cnt(3,simulation_instance%ncnt))
+        DO k=1,simulation_instance%ncnt
+            READ(101,*) dummy, (simulation_instance%coord_cnt(l,k),l=1,3)
+        END DO
+        CLOSE(101)
     END SUBROUTINE read_cnt_xyz
 
     SUBROUTINE write_matrix(matrix, output_file)
-      IMPLICIT NONE
-      !------------------------------------------------------------------------
-      ! This subroutines writes matrix to output_file.
-      ! output_file options:
-      ! - std_out : write matrix to standard output
-      ! - if present and not std_out: write matrix to output_file
-      ! - if not present: write matrix to "output.matrix"
-      !------------------------------------------------------------------------
-      REAL(8), INTENT(IN)                            :: matrix(:,:)
-      CHARACTER(LEN=100), INTENT(INOUT), OPTIONAL    :: output_file
+        !========================================================================!
+        ! This subroutine write a 2-dimensional matrix to output_file.           !
+        !                                                                        !
+        !   output_file options are:                                             !
+        ! - std_out : write matrix to standard output                            !
+        ! - if present and not std_out: write matrix to output_file              !
+        ! - if not present: write matrix to "output.matrix"                      !
+        !------------------------------------------------------------------------!
+        ! matrix(:,:)                   (in) : matrix                            !
+        ! output_file                   (in) : described above                   !
+        !========================================================================!
+        IMPLICIT NONE
 
-      INTEGER(4)                                     :: k,l, nr, nc
-      INTEGER(4)                                     :: output_seed
+        REAL(8), INTENT(IN)                            :: matrix(:,:)
+        CHARACTER(LEN=100), INTENT(INOUT), OPTIONAL    :: output_file
 
-      nr = SIZE(matrix,1)
-      nc = SIZE(matrix,2)
+        INTEGER(4)                                     :: k,l, nr, nc
+        INTEGER(4)                                     :: output_seed
 
-      IF (PRESENT(output_file)) THEN
-         IF (output_file .eq. "std_out") THEN
-            output_seed = 6
-            DO k=1,nr
-               WRITE(output_seed,*) (matrix(l,k),l=1,nc)
-            END DO
-            return
-         END IF
-      ELSE
-         output_file = "output.matrix"
-      END IF
+        nr = SIZE(matrix,1)
+        nc = SIZE(matrix,2)
 
-      output_seed = 101
-      OPEN(output_seed,file="output.matrix")
-      DO k=1,nr
-         WRITE(output_seed,*) (matrix(l,k),l=1,nc)
-      END DO
-      CLOSE(output_seed)
+        IF (PRESENT(output_file)) THEN
+            IF (output_file .eq. "std_out") THEN
+                output_seed = 6
+                DO k=1,nr
+                    WRITE(output_seed,*) (matrix(l,k),l=1,nc)
+                END DO
+                return
+            END IF
+        ELSE
+            output_file = "output.matrix"
+        END IF
 
-      return
+        output_seed = 101
+        OPEN(output_seed,file="output.matrix")
+        DO k=1,nr
+            WRITE(output_seed,*) (matrix(l,k),l=1,nc)
+        END DO
+        CLOSE(output_seed)
+
+        return
     END SUBROUTINE write_matrix
 
 
-    SUBROUTINE write_xyz(this, output_f)
-      IMPLICIT NONE
-      !------------------------------------------------------------------------
-      ! This subroutine writes an .xyz file with name "output.xyz"
-      ! The writte .xyz file will first contain the H atoms
-      ! and then the SWCNT C atoms.
-      !------------------------------------------------------------------------
-      CLASS(Simulation), INTENT(IN)                  :: this
-      CHARACTER(LEN=100), INTENT(INOUT), OPTIONAL    :: output_f
-      CHARACTER(LEN=100)                             :: output_file
-      INTEGER(4)                                     :: output_seed
-      INTEGER(4)                                     :: k,l
+    SUBROUTINE write_xyz(simulation_instance, output_file_name)
+        !========================================================================!
+        ! This subroutines reads the a xyz file from output_file_name            !
+        !------------------------------------------------------------------------!
+        ! simulation_instance (in) : Simulation instance                         !
+        ! output_file_name    (in) : name of the xyz file                        !
+        !========================================================================!
+        IMPLICIT NONE
+        TYPE(Simulation), INTENT(IN)                   :: simulation_instance
+        CHARACTER(LEN=100), INTENT(INOUT), OPTIONAL    :: output_file_name
+        CHARACTER(LEN=100)                             :: output_file
+        INTEGER(4)                                     :: output_seed
+        INTEGER(4)                                     :: k,l
 
-      output_seed = 101
+        output_seed = 101
 
-      IF (.not. PRESENT(output_f)) THEN
-         output_file = "cnt_hydrogen.xyz"
-      ELSE
-         output_file = output_f
-      END IF
+        IF (.not. PRESENT(output_file_name)) THEN
+            output_file = "cnt_hydrogen.xyz"
+        ELSE
+            output_file = output_file_name
+        END IF
 
-      OPEN(output_seed,file=output_file)
+        OPEN(output_seed,file=output_file)
 
-      ! Choose correct energy functions
-      SELECT CASE (this%model)
-      CASE("atomistic")
-         WRITE(output_seed,*) int(this%ncnt+this%npart)
-         WRITE(output_seed,*) "CNT atomistic + Hydrogen"
-         DO k=1,this%ncnt
-            WRITE(output_seed,*) "C", (this%coord_cnt(l,k),l=1,3)
-         END DO
-      CASE("continuum")
-         WRITE(output_seed,*) int(this%npart)
-         WRITE(output_seed,*) "CNT continuum + Hydrogen"
-      END SELECT
+        ! Choose correct energy functions
+        SELECT CASE (simulation_instance%model)
+        CASE("atomistic")
+            WRITE(output_seed,*) int(simulation_instance%ncnt+simulation_instance%npart)
+            WRITE(output_seed,*) "CNT atomistic + Hydrogen"
+            DO k=1,simulation_instance%ncnt
+                WRITE(output_seed,*) "C", (simulation_instance%coord_cnt(l,k),l=1,3)
+            END DO
+        CASE("continuum")
+            WRITE(output_seed,*) int(simulation_instance%npart)
+            WRITE(output_seed,*) "CNT continuum + Hydrogen"
+        END SELECT
 
-      DO k=1,this%npart
-         WRITE(output_seed,*) "H", (this%coord(l,k),l=1,3)
-      END DO
-    
-      CLOSE(output_seed)
-      return
+        DO k=1,simulation_instance%npart
+            WRITE(output_seed,*) "H", (simulation_instance%coord(l,k),l=1,3)
+        END DO
+
+        CLOSE(output_seed)
+        return
     END SUBROUTINE write_xyz
 
-    SUBROUTINE write_trajectory(this, output_file, step, no_cnt)
-      !------------------------------------------------------------------------
-      ! This subroutine writes an .xyz containing the "trajectory" of the CNT
-      ! + hydrogen molecules c.o.m.
-      ! It appends a new configuration if the file already exists; otherwise,
-      ! it just creates the file and writes the first configuration.
-      !------------------------------------------------------------------------
-      IMPLICIT NONE
-      CLASS(Simulation),  INTENT(IN)                 :: this
-      CHARACTER(LEN=100), INTENT(IN)                 :: output_file
-      INTEGER(4),         INTENT(IN)                 :: step
-      LOGICAL(4),         INTENT(IN)                 :: no_cnt
-      CHARACTER(LEN=100)                             :: comment
-      INTEGER(4)                                     :: output_seed, k, l
-      LOGICAL                                        :: exist
+    SUBROUTINE write_trajectory(simulation_instance, output_file, step, no_cnt)
+        !========================================================================!
+        ! This subroutines writes the simulation trajectory                      !
+        !------------------------------------------------------------------------!
+        ! simulation_instance (in) : Simulation instance                         !
+        ! output_file         (in) : name of the xyz file                        !
+        ! step                (in) : current simulation step                     !
+        ! no_cnt              (in) : flag that signals if CNT is to be written   !
+        !========================================================================!
+        IMPLICIT NONE
+        TYPE(Simulation),   INTENT(IN)                 :: simulation_instance
+        CHARACTER(LEN=100), INTENT(IN)                 :: output_file
+        INTEGER(4),         INTENT(IN)                 :: step
+        LOGICAL(4),         INTENT(IN)                 :: no_cnt
+        CHARACTER(LEN=100)                             :: comment
+        INTEGER(4)                                     :: output_seed, k, l
+        LOGICAL                                        :: exist
 
-      output_seed = 101
- 
-      INQUIRE(file=output_file, exist=exist)
-      IF (exist) THEN
-         OPEN(output_seed, file=output_file, status="old", position="append", action="write")
-      ELSE
-         OPEN(output_seed, file=output_file, status="new", action="write")
-      END IF
+        output_seed = 101
 
-      IF (no_cnt) THEN
-         WRITE (comment, "(I10.4)") step
-         WRITE(output_seed,*) (this%npart)
-         WRITE(output_seed,*) comment
+        INQUIRE(file=output_file, exist=exist)
+        IF (exist) THEN
+            OPEN(output_seed, file=output_file, status="old", position="append", action="write")
+        ELSE
+            OPEN(output_seed, file=output_file, status="new", action="write")
+        END IF
 
-         DO k=1,this%npart
-            WRITE(output_seed, *) "H ", (this%coord(l,k),l=1,3)
-         END DO
-      ELSE
-         WRITE (comment, "(A,I10.4)") "Sweep number", step
-         WRITE(output_seed,*) (this%npart+this%ncnt)
-         WRITE(output_seed,*) comment
+        IF (no_cnt) THEN
+            WRITE (comment, "(I10.4)") step
+            WRITE(output_seed,*) (simulation_instance%npart)
+            WRITE(output_seed,*) comment
 
-         DO k=1,this%ncnt
-            WRITE(output_seed, *) "C ", (this%coord_cnt(l,k),l=1,3)
-         END DO
+            DO k=1,simulation_instance%npart
+                WRITE(output_seed, *) "H ", (simulation_instance%coord(l,k),l=1,3)
+            END DO
+        ELSE
+            WRITE (comment, "(A,I10.4)") "Sweep number", step
+            WRITE(output_seed,*) (simulation_instance%npart+simulation_instance%ncnt)
+            WRITE(output_seed,*) comment
 
-         DO k=1,this%npart
-            WRITE(output_seed, *) "H ", (this%coord(l,k),l=1,3)
-         END DO
-      END IF
+            DO k=1,simulation_instance%ncnt
+                WRITE(output_seed, *) "C ", (simulation_instance%coord_cnt(l,k),l=1,3)
+            END DO
 
-      CLOSE(output_seed)
+            DO k=1,simulation_instance%npart
+                WRITE(output_seed, *) "H ", (simulation_instance%coord(l,k),l=1,3)
+            END DO
+        END IF
+
+        CLOSE(output_seed)
     END SUBROUTINE write_trajectory
 END MODULE io_module

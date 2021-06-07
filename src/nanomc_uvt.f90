@@ -3,7 +3,8 @@ PROGRAM nanomc_uvt
   USE io_module
   USE simulation_module
   USE energy_module
-  USE pbc_displacement_module
+  USE pbc_module
+  USE displacement_module
   USE monte_carlo_module
   USE std_output_module
   IMPLICIT NONE
@@ -18,10 +19,7 @@ PROGRAM nanomc_uvt
   REAL(8), PARAMETER                  :: prob_disp = 1.0 / 3.0
   REAL(8)                             :: n_acc, n_tot, frac_acc
   PROCEDURE(energy_function), POINTER :: energy_func_ptr => null ()
-
   CHARACTER(LEN=100)                  :: traj_file_name, prop_file_name
-  !TODO:PRESSURE
-  !REAL(8)                             :: press, press_virial
   INTEGER(4) :: o
 
 
@@ -48,10 +46,6 @@ PROGRAM nanomc_uvt
 
   ! Write simulations details to standard output
   CALL STD_OUTPUT_SIMULATION_DETAILS(sim)
-  ! Determine and use reduced units from this point
-  ! TODO: Joao Morado 17.12.2018  
-  ! TODO: not correctly implemented yet
-  ! CALL sim%generate_reduced_units()
 
   ! Allocate the position array and generate initial random distribution
   WRITE(6,'(A)') " * Allocating hydrogen coordinate matrix."
@@ -61,8 +55,6 @@ PROGRAM nanomc_uvt
   WRITE(6,'(A)') " * Preparing initial system configuration"
   ! Generate random distribution of initial particles
   CALL generate_random_distribution(sim)
-
-
 
   ! Allocate the initial coordinate array and array with real z coordinates
   ALLOCATE( sim%coord_init(3,sim%npart+1000), sim%coord_eff(3,sim%npart+1000))
@@ -77,29 +69,28 @@ PROGRAM nanomc_uvt
      energy_func_ptr => particle_energy_atomistic
   CASE("continuum")
      WRITE(6,'(A)') " * Branched into CNT continuum model."
-     energy_func_ptr => particle_energy
+     energy_func_ptr => particle_energy_continuum
   END SELECT
-
-
-    write(6,*) sim%ncnt
 
   WRITE(6,'(A,F16.8)') " * Reservoir pressure: ", sim%pressure_reservoir
   CALL STD_OUTPUT_STARTING_SIM()
+  WRITE(6,'(A20,A20)') adjustl(" MC sweep number"), adjustl("Number of particles")
+
+
   DO i=1,sim%nsweeps
      IF (RAND() .lt. prob_disp) THEN
         ! Select a particle at random
         o = INT(sim%npart*RAND())+1
         CALL mc_move(sim, energy_func_ptr, nvt_accepted,o)
-
      ELSE
         IF (sim%npart .gt. 0) THEN
-           CALL mc_exchange(sim,energy_func_ptr)
+           CALL mc_exchange(sim, energy_func_ptr)
         END IF
      END IF
 
      ! Write properties to output
      IF (MOD(i,sim%ntwx) .eq. 0) THEN
-        WRITE(6,'(A,I10.2,I10.4)') " MC sweep number: ", i, sim%npart
+        WRITE(6,'(I20,I20)') i, sim%npart
         ! TODO: implement write_properties function in the io_module
         !CALL write_properties()
      END IF

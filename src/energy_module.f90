@@ -1,267 +1,207 @@
 MODULE energy_module
-  USE pbc_displacement_module
-  USE simulation_module
-  IMPLICIT NONE
-
-
+    USE pbc_module
+    USE simulation_module
+    IMPLICIT NONE
 
 CONTAINS
-  FUNCTION lj_fluid(this,r2)
-    !----------------------------------------------------------------------------
-    !TODO:make it work with/without reduced units
-    !
-    !----------------------------------------------------------------------------
-    CLASS(Simulation), INTENT(IN) :: this
+    FUNCTION lennard_jones_energy(r2, epsilon, sigma)
+        !========================================================================!
+        ! This function calculates the Lennard-Jones 12-6 energy                 !
+        !------------------------------------------------------------------------!
+        ! r2           (in) : distance squared                                   !
+        ! epsilon      (in) : potential well depth                               !
+        ! sigma        (in) : distance at which the potential is zero            !
+        !========================================================================!
+        REAL(8),    INTENT(IN) :: r2, epsilon, sigma
+        REAL(8)                :: lennard_jones_energy, rep_term, attract_term,sigma2
 
-    REAL(8), INTENT(IN) :: r2
-    REAL(8)             :: lj_fluid, attract_term, rep_term, sigma2
+        ! Squared values
+        sigma2 = sigma*sigma
 
-    sigma2 = this%sigma_fluid * this%sigma_fluid                               ! Si
-    attract_term = (sigma2 / r2) * (sigma2 / r2) * (sigma2 / r2)
-    rep_term = attract_term * attract_term
+        ! 4*epsilon((sigma/r)**12-(sigma/r)**6)
+        attract_term = (sigma2 / r2) * (sigma2 / r2) * (sigma2 / r2)
+        rep_term = attract_term * attract_term
 
-    lj_fluid = 4.0d0 * this%eps_fluid * (rep_term - attract_term)
+        ! Lennard-Jones 12-6 energy
+        lennard_jones_energy = 4.0d0 * epsilon * (rep_term - attract_term)
 
-    RETURN
-  END FUNCTION lj_fluid
+        RETURN
+    END FUNCTION lennard_jones_energy
 
-  FUNCTION lj_fluid_cnt(this, r2)
-    !----------------------------------------------------------------------------
-    !
-    !
-    !----------------------------------------------------------------------------
-    CLASS(Simulation), INTENT(IN) :: this
-    REAL(8), INTENT(IN) :: r2
-    REAL(8)             :: lj_fluid_cnt, attract_term, rep_term, sigma2
+    FUNCTION total_system_energy(simulation_instance)
+        !========================================================================!
+        ! This function calculates the total Lennard-Jones 12-6 energy           !
+        ! for a atomistic nanotube representation                                !
+        !------------------------------------------------------------------------!
+        ! simulation_instance (in) : Simulation instance                         !
+        !========================================================================!
+        IMPLICIT NONE
+        TYPE(Simulation),  INTENT(IN) :: simulation_instance
+        REAL(8)                       :: total_system_energy
+        INTEGER(4)                    :: k
 
-    sigma2 = this%sigma_cnt * this%sigma_cnt                               ! Sigma squared
-    attract_term = (sigma2 / r2) * (sigma2 / r2) * (sigma2 / r2)
-    rep_term = attract_term * attract_term
+        ! Total system energy is equal to sum of invidual energy particle contributions divided by 2
+        total_system_energy = 0
+        DO k=1,simulation_instance%npart
+            total_system_energy = total_system_energy &
+                    + particle_energy_atomistic(simulation_instance, k, simulation_instance%coord(:,k)) / 2.0d0
+        END DO
 
-    lj_fluid_cnt = 4.0d0 * this%eps_cnt * (rep_term - attract_term)
+        RETURN
+    END FUNCTION total_system_energy
 
-    RETURN
-  END FUNCTION lj_fluid_cnt
+    FUNCTION particle_energy_continuum(simulation_instance, index, coord)
+        IMPLICIT NONE
+        !========================================================================!
+        ! This function calculates the particle Lennard-Jones 12-6 energy        !
+        ! for a continuum nanotube representation                                !
+        !------------------------------------------------------------------------!
+        ! simulation_instance (in) : Simulation instance                         !
+        ! index               (in) : index of the particle                       !
+        ! coord(3)            (in) : coordinates of the particle                 !
+        !========================================================================!
+        TYPE(Simulation),  INTENT(IN)      :: simulation_instance
+        REAL(8),           INTENT(IN)      :: coord(:)
+        INTEGER(4),        INTENT(IN)      :: index
+        REAL(8)                            :: r(3)
+        REAL(8)                            :: particle_energy_continuum, energy_nt_particle, energy_particle_fluid, r2
+        INTEGER(4)                         :: k
 
+        !========================================================================!
+        !                         Fluid-fluid LJ 12-6 energy                     !
+        !========================================================================!
+        energy_particle_fluid = 0
 
-  FUNCTION lj_fluid_cnt_atomistic(this, r2)
-    !----------------------------------------------------------------------------
-    !
-    !
-    !----------------------------------------------------------------------------
-    CLASS(Simulation), INTENT(IN) :: this
-    REAL(8), INTENT(IN) :: r2
-    REAL(8)             :: lj_fluid_cnt_atomistic, attract_term, rep_term, sigma2
+        DO k=1,index-1
+            r = coord(:)-simulation_instance%coord(:,k)
+            CALL pbc(r, (/simulation_instance%cell_instance%a,simulation_instance%cell_instance%b,&
+                    simulation_instance%cell_instance%c/))
+            r2 = SUM(r*r)
 
-    sigma2 = this%sigma_cnt * this%sigma_cnt                               ! Sigma squared
-    attract_term = (sigma2 / r2) * (sigma2 / r2) * (sigma2 / r2)
-    rep_term = attract_term * attract_term
+            ! If within cut-off take interaction into account
+            IF (r2 .lt. simulation_instance%fluid_cut_off * simulation_instance%fluid_cut_off) THEN
+                energy_particle_fluid = energy_particle_fluid + &
+                        lennard_jones_energy(r2, simulation_instance%eps_fluid, simulation_instance%sigma_fluid )
+            END IF
+        END DO
 
-    lj_fluid_cnt_atomistic = 4.0d0 * this%eps_cnt * (rep_term - attract_term)
+        DO k=index+1,simulation_instance%npart
+            r = coord(:)-simulation_instance%coord(:,k)
+            CALL pbc(r, (/simulation_instance%cell_instance%a,simulation_instance%cell_instance%b,&
+                    simulation_instance%cell_instance%c/))
+            r2 = SUM(r*r)
 
-    RETURN
-  END FUNCTION lj_fluid_cnt_atomistic
+            ! If within cut-off take interaction into account
+            IF (r2 .lt. simulation_instance%fluid_cut_off * simulation_instance%fluid_cut_off) THEN
+                energy_particle_fluid = energy_particle_fluid + &
+                        lennard_jones_energy(r2, simulation_instance%eps_fluid, simulation_instance%sigma_fluid )
+            END IF
+        END DO
 
+        !========================================================================!
+        !                      Fluid-NT(continuum) LJ 12-6 energy                !
+        !========================================================================!
+        r2 = simulation_instance%radius - SQRT(SUM( coord(1:2)*coord(1:2) ))
+        r2 = r2*r2
 
-  FUNCTION system_energy(this, coord, sigma, eps)
-    IMPLICIT NONE
-    !----------------------------------------------------------------------------
-    ! TODO: check this subroutine
-    !
-    !----------------------------------------------------------------------------
-    CLASS(Simulation), INTENT(IN) :: this
-    REAL(8),           INTENT(IN) :: sigma, eps
-    REAL(8),           INTENT(IN) :: coord(:)
-    REAL(8)                       :: system_energy, energy_cnt_fluid, energy_fluid, r2
-    INTEGER(4)                    :: k, l
+        IF (r2 .lt. simulation_instance%cnt_cut_off * simulation_instance%cnt_cut_off) THEN
+            energy_nt_particle = energy_nt_particle &
+                    + lennard_jones_energy(r2, simulation_instance%eps_cnt, simulation_instance%sigma_cnt)
+        END IF
 
+        !========================================================================!
+        !                            Total LJ 12-6 energy                        !
+        !========================================================================!
+        ! Add up different contributions to the energy
+        ! E_particle_total = E_particle_particle + E_particle_cnt
+        particle_energy_continuum = energy_particle_fluid + energy_nt_particle
 
-    system_energy = 0
-    DO k=1,this%npart
-       energy_fluid = particle_energy(this, k, coord) / 2.0d0
+        RETURN
+    END FUNCTION particle_energy_continuum
 
-       r2 = this%radius*this%radius - SUM( coord(1:2)*coord(1:2) )
-       energy_cnt_fluid = lj_fluid_cnt(this,r2)
+    FUNCTION particle_energy_atomistic(simulation_instance, index, coord)
+        !========================================================================!
+        ! This function calculates the particle Lennard-Jones 12-6 energy        !
+        ! for an atomistic nanotube representation                               !
+        !------------------------------------------------------------------------!
+        ! simulation_instance (in) : Simulation instance                         !
+        ! index               (in) : index of the particle                       !
+        ! coord(3)            (in) : coordinates of the particle                 !
+        !========================================================================!
+        IMPLICIT NONE
+        TYPE(Simulation),  INTENT(IN) :: simulation_instance
+        REAL(8),           INTENT(IN) :: coord(:)
+        INTEGER(4),        INTENT(IN) :: index
+        REAL(8)                       :: r(3)
+        REAL(8)                       :: particle_energy_atomistic, energy_nt_particle, energy_particle_fluid, r2
+        INTEGER(4)                    :: k, l
 
-       system_energy = system_energy + energy_fluid + energy_cnt_fluid
-    END DO
+        !========================================================================!
+        !                         Fluid-fluid LJ 12-6 energy                     !
+        !========================================================================!
+        energy_particle_fluid = 0
 
-    RETURN
-  END FUNCTION system_energy
+        ! Fluid inter-particle contribution to the energy
+        DO k=1,index-1
+            ! Compute distance r
+            r = coord(:)-simulation_instance%coord(:,k)
 
+            ! Apply PBC
+            CALL pbc(r, (/simulation_instance%cell_instance%a,simulation_instance%cell_instance%b,&
+                    simulation_instance%cell_instance%c/))
 
-  FUNCTION particle_energy(this, index, coord)
-    IMPLICIT NONE
-    !-----------------------------------------------------------------------
-    ! This functions returns the energy of a particle with index 'index'
-    ! at the given postion 'coord' in the CNT continuum model.
-    !-----------------------------------------------------------------------
-    CLASS(Simulation), INTENT(IN)      :: this
-    REAL(8),           INTENT(IN)      :: coord(:)
-    INTEGER(4),        INTENT(IN)      :: index
-    REAL(8)                            :: r(3)
-    REAL(8)                            :: particle_energy, energy_cnt_part, energy_part, r2
-    INTEGER(4)                         :: k
+            ! Compute r squared of the periodic distance
+            r2 = SUM(r*r)
 
-    particle_energy = 0
-    ! Fluid particle-particle contribution to the energy
-    DO k=1,index-1
-       r = coord(:)-this%coord(:,k)
-       CALL pbc_z_distance(r, this%length)
+            ! If within cut-off radius take interaction into account
+            IF (r2 .lt. simulation_instance%fluid_cut_off * simulation_instance%fluid_cut_off) THEN
+                energy_particle_fluid = energy_particle_fluid + &
+                        lennard_jones_energy(r2, simulation_instance%eps_fluid, simulation_instance%sigma_fluid )
+            END IF
+        END DO
 
-       r2 = SUM(r*r)
-       particle_energy = particle_energy + lj_fluid(this,r2)
-    END DO
+        DO k=index+1,simulation_instance%npart
+            ! Compute distance r
+            r = coord(:)-simulation_instance%coord(:,k)
+            ! Apply PBC to r
+            CALL pbc(r, (/simulation_instance%cell_instance%a,simulation_instance%cell_instance%b,&
+                    simulation_instance%cell_instance%c/))
+            ! Compute r squared of the periodic distance
+            r2 = SUM(r*r)
 
-    DO k=index+1,this%npart
-       r = coord(:)-this%coord(:,k)
+            ! If within cut-off radius take interaction into account
+            IF (r2 .lt. simulation_instance%fluid_cut_off * simulation_instance%fluid_cut_off) THEN
+                energy_particle_fluid = energy_particle_fluid + &
+                        lennard_jones_energy(r2, simulation_instance%eps_fluid, simulation_instance%sigma_fluid )
+            END IF
+        END DO
 
-       CALL pbc_z_distance(r, this%length)
-       r2 = SUM(r*r)
+        !========================================================================!
+        !                      Fluid-NT(atomistic) LJ 12-6 energy                !
+        !========================================================================!
+        energy_nt_particle = 0
+        DO k=1,simulation_instance%ncnt
+            ! Compute distance r
+            r = coord(:)-simulation_instance%coord_cnt(:,k)
 
-       particle_energy = particle_energy + lj_fluid(this,r2)
-    END DO
+            ! Apply PBC
+            CALL pbc(r, (/simulation_instance%cell_instance%a,simulation_instance%cell_instance%b,&
+                    simulation_instance%cell_instance%c/))
 
+            ! Compute r squared of the periodic distance
+            r2 = SUM(r*r)
 
-    ! Fluid-CNT contribution to the energy
-    r2 = this%radius - SQRT(SUM( coord(1:2)*coord(1:2) ))
-    r2 = r2*r2
-    energy_cnt_part = lj_fluid_cnt(this,r2)
+            IF (r2 .lt. simulation_instance%cnt_cut_off * simulation_instance%cnt_cut_off) THEN
+                energy_nt_particle = energy_nt_particle &
+                        + lennard_jones_energy(r2, simulation_instance%eps_cnt, simulation_instance%sigma_cnt)
+            END IF
+        END DO
 
-    ! Add up different contributions to the energy
-    ! E_particle_total = E_particle_particle + E_particle_cnt
-    particle_energy = particle_energy + energy_cnt_part
+        !========================================================================!
+        !                            Total LJ 12-6 energy                        !
+        !========================================================================!
+        particle_energy_atomistic = energy_nt_particle + energy_particle_fluid
 
-    RETURN
-  END FUNCTION PARTICLE_ENERGY
-
-
-
-  FUNCTION particle_energy_atomistic(this, index, coord)
-    IMPLICIT NONE
-    !-----------------------------------------------------------------------
-    ! This functions returns the energy of a particle with index 'index'
-    ! at the given postion 'coord' in the CNT atomistic model.
-    !-----------------------------------------------------------------------
-    CLASS(Simulation), INTENT(IN) :: this
-    REAL(8),           INTENT(IN) :: coord(:)
-    INTEGER(4),        INTENT(IN) :: index
-    REAL(8)                       :: r(3)
-    REAL(8)                       :: particle_energy_atomistic, energy_cnt_part, energy_part, r2
-    INTEGER(4)                    :: k,l
-
-    particle_energy_atomistic = 0
-
-    ! Fluid inter-particle contribution to the energy
-    DO k=1,index-1
-       ! Compute distance r
-       r = coord(:)-this%coord(:,k)
-
-       ! Apply PBC to r
-       CALL pbc_z_distance(r, this%length)
-
-       ! Compute r squared of the periodic distance
-       r2 = SUM(r*r)
-
-       ! If within cut-off radius take interaction into account
-       IF (r2 .lt. this%fluid_cut_off * this%fluid_cut_off) THEN
-          particle_energy_atomistic = particle_energy_atomistic + lj_fluid(this,r2)
-       END IF
-    END DO
-
-    DO k=index+1,this%npart
-       ! Compute distance r
-       r = coord(:)-this%coord(:,k)
-       ! Apply PBC to r
-       CALL pbc_z_distance(r, this%length)
-       ! Compute r squared of the periodic distance
-       r2 = SUM(r*r)
-
-       IF (r2 .lt. this%fluid_cut_off * this%fluid_cut_off) THEN
-          particle_energy_atomistic = particle_energy_atomistic + lj_fluid(this,r2)
-       END IF
-    END DO
-
-    ! Fluid-CNT contribution to the energy
-    DO k=1,this%ncnt
-       ! Compute distance r
-       r = coord(:)-this%coord_cnt(:,k)
-       ! Apply PBC to r
-       CALL pbc_z_distance(r, this%length)
-       ! Compute r squared of the periodic distance
-       r2 = SUM(r*r)
-
-       IF (r2 .lt. this%cnt_cut_off * this%cnt_cut_off) THEN
-          particle_energy_atomistic = particle_energy_atomistic + lj_fluid_cnt_atomistic(this,r2)
-       END IF
-    END DO
-
-    RETURN
-  END FUNCTION PARTICLE_ENERGY_ATOMISTIC
-
-
-  FUNCTION virial_local(this, k) RESULT(virial)
-    !-------------------------------------------------------------
-    ! Computes the virial
-    !----------------------------------------------------------- 
-    IMPLICIT NONE
-    ! Input class
-    CLASS(Simulation), INTENT(IN) :: this
-    ! Intermediate variables
-    INTEGER(4), INTENT(IN) :: k
-    INTEGER(4) :: l
-    REAL(8) :: r(3), r2
-    REAL(8) :: attract_term, rep_term
-    REAL(8) :: sigmaf2, sigmacnt2
-    ! Output variable
-    REAL(8) :: virial
-
-
-    sigmaf2 = this%sigma_fluid*this%sigma_fluid          ! Sigma fluid squared
-    sigmacnt2 = this%sigma_cnt*this%sigma_cnt            ! Sigma CNT squared
-
-    virial = 0
-    
-       DO l=k+1,this%npart
-          ! Compute distance r
-          r = this%coord(:,k)-this%coord(:,l)
-          ! Apply PBC to r
-          CALL pbc_z_distance(r, this%length)
-
-          ! Compute r squared of the periodic distance
-          r2 = SUM(r*r)
-
-
-          IF (r2 .lt. this%fluid_cut_off * this%fluid_cut_off) THEN
-             attract_term = (sigmaf2 / r2) * (sigmaf2 / r2) * (sigmaf2 / r2)
-             rep_term = attract_term * attract_term
-             virial = virial + 48 * this%eps_fluid * (rep_term - 0.5 * attract_term) !/ SQRT(r2)
-          END IF
-       END DO
-
-
-       DO l=1,this%ncnt
-        ! Compute distance r
-          r = this%coord(:,k)-this%coord_cnt(:,l)
-          ! Apply PBC to r
-          CALL pbc_z_distance(r, this%length)
-      
-          ! Compute r squared of the periodic distance
-          r2 = SUM(r*r)
-        
-          ! If within cut off
-          IF (r2 .lt. this%cnt_cut_off * this%cnt_cut_off) THEN
-             attract_term = (sigmacnt2 / r2) * (sigmacnt2 / r2) * (sigmacnt2 / r2)
-             rep_term = attract_term * attract_term
-             virial = virial + 48 * this%eps_cnt * (rep_term - 0.5 * attract_term) ! / SQRT(r2)!
-          END IF
-    END DO
-    
-    virial = (1.0d0/6.0d0) * virial
-    
-    RETURN
-
-  END FUNCTION virial_local
-
-
-END MODULE ENERGY_MODULE
+        RETURN
+    END FUNCTION particle_energy_atomistic
+END MODULE energy_module

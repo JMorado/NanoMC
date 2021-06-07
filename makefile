@@ -23,17 +23,17 @@ PROGRAMS_PATH=$(addprefix $(BIN), $(PROGRAMS))
 all: directories $(PROGRAMS_PATH)
 
 # Linking modules
+$(BUILD)simulation_module.o: $(BUILD)cell_module.o
 $(BUILD)std_output_module.o: $(BUILD)simulation_module.o
-$(BUILD)io_module.o: $(BUILD)simulation_module.o
-$(BUILD)pbc_displacement_module.o: $(BUILD)simulation_module.o
-$(BUILD)energy_module.o: $(BUILD)pbc_displacement_module.o $(BUILD)simulation_module.o
-$(BUILD)monte_carlo_module.o: $(BUILD)simulation_module.o  $(BUILD)energy_module.o  $(BUILD)pbc_displacement_module.o 
-$(BUILD)nanomc_nvt.o: $(BUILD)std_output_module.o $(BUILD)io_module.o  $(BUILD)simulation_module.o  $(BUILD)energy_module.o  $(BUILD)pbc_displacement_module.o  $(BUILD)time_module.o  $(BUILD)monte_carlo_module.o
-$(BUILD)nanomc_uvt.o: $(BUILD)std_output_module.o $(BUILD)io_module.o  $(BUILD)simulation_module.o  $(BUILD)energy_module.o  $(BUILD)pbc_displacement_module.o  $(BUILD)time_module.o  $(BUILD)monte_carlo_module.o
+$(BUILD)io_module.o: $(BUILD)simulation_module.o $(BUILD)cell_module.o $(BUILD)constants_module.o
+$(BUILD)energy_module.o: $(BUILD)pbc_module.o $(BUILD)simulation_module.o
+$(BUILD)monte_carlo_module.o: $(BUILD)simulation_module.o  $(BUILD)energy_module.o  $(BUILD)pbc_module.o $(BUILD)displacement_module.o
+$(BUILD)nanomc_nvt.o: $(BUILD)std_output_module.o $(BUILD)io_module.o  $(BUILD)simulation_module.o  $(BUILD)energy_module.o  $(BUILD)pbc_module.o $(BUILD)displacement_module.o  $(BUILD)time_module.o  $(BUILD)monte_carlo_module.o
+$(BUILD)nanomc_uvt.o: $(BUILD)std_output_module.o $(BUILD)io_module.o  $(BUILD)simulation_module.o  $(BUILD)energy_module.o  $(BUILD)pbc_module.o $(BUILD)displacement_module.o  $(BUILD)time_module.o  $(BUILD)monte_carlo_module.o
 
 # Linking modules to executables
-$(BIN)nanomc_nvt.exe: $(BUILD)std_output_module.o $(BUILD)io_module.o  $(BUILD)simulation_module.o  $(BUILD)energy_module.o  $(BUILD)pbc_displacement_module.o  $(BUILD)time_module.o  $(BUILD)monte_carlo_module.o
-$(BIN)nanomc_uvt.exe: $(BUILD)std_output_module.o $(BUILD)io_module.o  $(BUILD)simulation_module.o  $(BUILD)energy_module.o  $(BUILD)pbc_displacement_module.o  $(BUILD)time_module.o  $(BUILD)monte_carlo_module.o
+$(BIN)nanomc_nvt.exe: $(BUILD)std_output_module.o $(BUILD)io_module.o  $(BUILD)simulation_module.o  $(BUILD)energy_module.o  $(BUILD)pbc_module.o $(BUILD)displacement_module.o  $(BUILD)time_module.o  $(BUILD)monte_carlo_module.o
+$(BIN)nanomc_uvt.exe: $(BUILD)std_output_module.o $(BUILD)io_module.o  $(BUILD)simulation_module.o  $(BUILD)energy_module.o  $(BUILD)pbc_module.o $(BUILD)displacement_module.o $(BUILD)time_module.o  $(BUILD)monte_carlo_module.o
 
 # General rule for building prog from prog.o; $^ (GNU extension) is
 # used in order to list additional object files on which the

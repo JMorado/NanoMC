@@ -1,0 +1,18 @@
+nvt                      ! ensemble
+314                      ! number of particles (nvt)
+5000000                  ! number of MC sweeps
+77                       ! temperature
+50                       ! swcnt length
+10                       ! swcnt radius
+10 10 50 90.0 90.0 90.0  ! cell parameters
+12.0                     ! fluid_cut_off
+12.0                     ! fluid_cnt_cut_off
+2.96                     ! sigma LJ 12-6 fluid
+34.2                     ! epsilon LJ 12-6 fluid
+3.18                     ! sigma fluid-CNT
+30.9                     ! epsilon fluid-CNT
+nvt_sim                  ! outputseed
+123123                   ! random generator seed
+1000                     ! ntwx
+1000                     ! ntpr
+
