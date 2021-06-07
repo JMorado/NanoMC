@@ -74,8 +74,7 @@ CONTAINS
 
         DO k=1,index-1
             r = coord(:)-simulation_instance%coord(:,k)
-            CALL pbc(r, (/simulation_instance%cell_instance%a,simulation_instance%cell_instance%b,&
-                    simulation_instance%cell_instance%c/))
+            CALL pbc_z_distance(r, simulation_instance%length)
             r2 = SUM(r*r)
 
             ! If within cut-off take interaction into account
@@ -87,8 +86,8 @@ CONTAINS
 
         DO k=index+1,simulation_instance%npart
             r = coord(:)-simulation_instance%coord(:,k)
-            CALL pbc(r, (/simulation_instance%cell_instance%a,simulation_instance%cell_instance%b,&
-                    simulation_instance%cell_instance%c/))
+            CALL pbc_z_distance(r, simulation_instance%length)
+
             r2 = SUM(r*r)
 
             ! If within cut-off take interaction into account
@@ -140,15 +139,14 @@ CONTAINS
         !                         Fluid-fluid LJ 12-6 energy                     !
         !========================================================================!
         energy_particle_fluid = 0
-
         ! Fluid inter-particle contribution to the energy
         DO k=1,index-1
             ! Compute distance r
             r = coord(:)-simulation_instance%coord(:,k)
 
             ! Apply PBC
-            CALL pbc(r, (/simulation_instance%cell_instance%a,simulation_instance%cell_instance%b,&
-                    simulation_instance%cell_instance%c/))
+            CALL pbc_z_distance(r, simulation_instance%length)
+
 
             ! Compute r squared of the periodic distance
             r2 = SUM(r*r)
@@ -164,8 +162,8 @@ CONTAINS
             ! Compute distance r
             r = coord(:)-simulation_instance%coord(:,k)
             ! Apply PBC to r
-            CALL pbc(r, (/simulation_instance%cell_instance%a,simulation_instance%cell_instance%b,&
-                    simulation_instance%cell_instance%c/))
+            CALL pbc_z_distance(r, simulation_instance%length)
+
             ! Compute r squared of the periodic distance
             r2 = SUM(r*r)
 
@@ -185,8 +183,7 @@ CONTAINS
             r = coord(:)-simulation_instance%coord_cnt(:,k)
 
             ! Apply PBC
-            CALL pbc(r, (/simulation_instance%cell_instance%a,simulation_instance%cell_instance%b,&
-                    simulation_instance%cell_instance%c/))
+            CALL pbc_z_distance(r, simulation_instance%length)
 
             ! Compute r squared of the periodic distance
             r2 = SUM(r*r)

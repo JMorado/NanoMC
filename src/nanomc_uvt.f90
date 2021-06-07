@@ -115,6 +115,7 @@ PROGRAM nanomc_uvt
 
     END DO
 
+    CALL write_xyz(sim, "output_final.xyz")
     CALL STD_OUTPUT_END_SIM()
 
     STOP

@@ -99,7 +99,6 @@ CONTAINS
             simulation_instance%thermal_wav = (planck*planck*simulation_instance%beta) / (2*pi*2*1.6737236d-27)
             simulation_instance%thermal_wav = (simulation_instance%thermal_wav) ** (1/2.)
 
-            write(6,*) simulation_instance%chemical_pot, simulation_instance%thermal_wav, simulation_instance%beta
             simulation_instance%activity = exp(simulation_instance%chemical_pot / simulation_instance%temperature) &
                     / (simulation_instance%thermal_wav ** 3.0)
 

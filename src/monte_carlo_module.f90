@@ -57,10 +57,16 @@ CONTAINS
             dr =  get_displacement_uniform( simulation_instance%disp )
         END SELECT
 
-        coord_tmp = simulation_instance%coord(:,o) + dr(:)
+        coord_tmp = simulation_instance%coord(:,o) !+ dr(:)
+
+        ! Apply reflection
+        CALL reflection(simulation_instance, coord_tmp, dr)
+
+        ! Z direction
+        coord_tmp(3) = coord_tmp(3) + dr(3)
 
         ! Apply PBC
-        CALL pbc(coord_tmp, (/simulation_instance%cell_instance%a,simulation_instance%cell_instance%b,&
+        CALL pbc_z(coord_tmp, (/simulation_instance%cell_instance%a,simulation_instance%cell_instance%b,&
                 simulation_instance%cell_instance%c/))
 
         ! Energy new configuration
@@ -116,6 +122,7 @@ CONTAINS
         REAL(8)                              :: coord_tmp(3)
         INTEGER(4)                           :: o
         PROCEDURE(energy_function), POINTER  :: energy_func
+
 
         accepted = .FALSE.
         IF (RAND() .lt. 0.5) THEN
