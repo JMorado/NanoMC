@@ -42,7 +42,7 @@ MODULE simulation_module
 
         !
         REAL(8)               :: density
-        REAL(8)               :: disp
+        REAL(8)               :: disp = 1.0
         REAL(8)               :: fluid_mass
 
         ! Atomist model variables

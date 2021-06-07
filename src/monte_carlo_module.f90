@@ -93,7 +93,7 @@ CONTAINS
         END IF
     END SUBROUTINE mc_move
 
-    SUBROUTINE mc_exchange(simulation_instance, energy_func)
+    SUBROUTINE mc_exchange(simulation_instance, energy_func, accepted)
         !========================================================================!
         ! This subroutine attempts to perform a grand canonical MC move by       !
         ! exchanging a particle with a reservoir                                 !
@@ -106,16 +106,18 @@ CONTAINS
         !------------------------------------------------------------------------!
         ! simulation_instance      (inout) : simulation instance                 !
         ! energy_func                 (in) : pointer to energy function          !
+        ! accepted                    (in) : flag that signal move acceptance    !
         !========================================================================!
         IMPLICIT NONE
         TYPE(Simulation), INTENT(INOUT)      :: simulation_instance
+        LOGICAL(1), INTENT(OUT)              :: accepted
         REAL(8)                              :: energy, prob_acceptance, arg
         REAL(8)                              :: r2, x2
         REAL(8)                              :: coord_tmp(3)
         INTEGER(4)                           :: o
         PROCEDURE(energy_function), POINTER  :: energy_func
 
-
+        accepted = .FALSE.
         IF (RAND() .lt. 0.5) THEN
             IF (simulation_instance%npart .eq. 0) THEN
                 ! There are no particles
@@ -139,11 +141,13 @@ CONTAINS
             IF (arg .gt. 0) THEN
                 simulation_instance%coord(:,o) = simulation_instance%coord(:,simulation_instance%npart)
                 simulation_instance%npart = simulation_instance%npart - 1
+                accepted = .TRUE.
             ELSE IF (arg .gt. -30.0) THEN
                 prob_acceptance = min(1.0d0,EXP(arg))
                 IF ( RAND() .lt. prob_acceptance ) THEN
                     simulation_instance%coord(:,o) = simulation_instance%coord(:,simulation_instance%npart)
                     simulation_instance%npart = simulation_instance%npart - 1
+                    accepted = .TRUE.
                 END IF
             END IF
         ELSE
@@ -165,11 +169,13 @@ CONTAINS
             IF (arg .gt. 0) THEN
                 simulation_instance%coord(:,simulation_instance%npart+1) = coord_tmp
                 simulation_instance%npart = simulation_instance%npart + 1
+                accepted = .TRUE.
             ELSE IF (arg .gt. -30.0) THEN
                 prob_acceptance = min(1.0d0,EXP(arg))
                 IF ( RAND() .lt. prob_acceptance ) THEN
                     simulation_instance%coord(:,simulation_instance%npart+1) = coord_tmp
                     simulation_instance%npart = simulation_instance%npart + 1
+                    accepted = .TRUE.
                 END IF
             END IF
         END IF

@@ -37,17 +37,17 @@ CONTAINS
 
     WRITE(6,*)
     WRITE(6,'(A)') " * CNT Parameters *"
-    WRITE(6,'(A30,F8.4)') adjustl("   - CNT length: "),this%length
-    WRITE(6,'(A30,F8.4)') adjustl("   - CNT radius: "),this%radius
+    WRITE(6,'(A30,F8.4)') adjustl("   - CNT length (A): "),this%length
+    WRITE(6,'(A30,F8.4)') adjustl("   - CNT radius (A): "),this%radius
     WRITE(6,'(A)') " * "
 
     WRITE(6,*)
     WRITE(6,'(A)') " * Lennard-Jones 12-6 parameters *"
-    WRITE(6,'(A30,F8.4)') adjustl("   - fluid-fluid cut-off: "),this%fluid_cut_off
-    WRITE(6,'(A30,F8.4)') adjustl("   - CNT-CNTT cut-off: "),this%cnt_cut_off
-    WRITE(6,'(A30,F8.4)') adjustl("   - Fluid sigma: "),this%sigma_fluid
+    WRITE(6,'(A30,F8.4)') adjustl("   - fluid-fluid cut-off (A): "),this%fluid_cut_off
+    WRITE(6,'(A30,F8.4)') adjustl("   - CNT-CNTT cut-off (A): "),this%cnt_cut_off
+    WRITE(6,'(A30,F8.4)') adjustl("   - Fluid sigma (A): "),this%sigma_fluid
     WRITE(6,'(A30,F8.4)') adjustl("   - Fluid epsilon: "),this%eps_fluid
-    WRITE(6,'(A30,F8.4)') adjustl("   - CNT sigma: "),this%sigma_cnt
+    WRITE(6,'(A30,F8.4)') adjustl("   - CNT sigma (A): "),this%sigma_cnt
     WRITE(6,'(A30,F8.4)') adjustl("   - CNT epsilon: "),this%eps_cnt
     WRITE(6,'(A)') " * "
 
