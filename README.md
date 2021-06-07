@@ -38,7 +38,7 @@ To clean up the code use
 - __monte_carlo_module.f90__: subroutines that perform core parts of uVT and NVT MC simulations
 - __simulation_module.f90__: simulation object module
 - __pbc_module.f90__: periodic boundary conditions module
-- __pbc_module.f90__: MC move displacement subroutine module
+- __displacement.f90__: MC displacements module
 - __time_module.f90__: time-dependent MC module
 - __cell.f90__: simulation cell object module
 - __io_module.f90__: subroutines that perform input/output operations
