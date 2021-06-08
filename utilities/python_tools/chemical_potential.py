@@ -1,4 +1,4 @@
-def chemical_potential(temperature, pressure):
+def chemical_potential(T, pressure):
     """
     Temperature is in Kelvin and pressure is in Pascal.
     """
@@ -10,12 +10,10 @@ def chemical_potential(temperature, pressure):
     beta = 1.0 / (kb * T)                # Thermodynamic beta
 
     # Thermal wavelength
-    thermal_wav = planck * planck * beta / (2 * math.pi * mass)
+    thermal_wav = planck * planck * beta / (2 * np.pi * mass)
     thermal_wav = thermal_wav ** (1/2.)
 
     # Calculate chemical potential 
     chemical_pot = np.log(pressure * thermal_wav ** 3 * beta) * T
-
-    print("The chemical potential is: " + str(chemical_pot))
     
     return chemical_pot

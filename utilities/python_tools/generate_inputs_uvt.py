@@ -12,6 +12,7 @@ def write_input(file_name, chemical_pot, T,nanotube_file):
 
     ensemble = "uvt"
     radius = 6.780
+    length= 491.90242935
 
     f = open(name,'w')
     f.write("atomistic                ! swcnt model \n")
@@ -19,12 +20,12 @@ def write_input(file_name, chemical_pot, T,nanotube_file):
     f.write(str(ensemble) + "         ! ensemble \n")
     f.write(str(chemical_pot) + "     ! chemical potential \n")
     f.write(nanotube_file + "         ! nanotube file \n")
-    f.write("482                      ! Number of MC sweeps \n")
-    f.write("2000000                  ! number of MC sweeps \n")
+    f.write("482                      ! particles \n")
+    f.write("10000000                 ! number of MC sweeps \n")
     f.write(str(T) + "                ! temperature \n")
-    f.write("491.90242935             ! length \n")
+    f.write(str(length) + "           ! length \n")  # 8 dc
     f.write(str(radius) + "           ! swcnt radius \n")
-    f.write(str(radius) + " " + str(radius) + " " + str(length) + " 90.0 90.0 90.0 \n    ! ")
+    f.write(str(radius) + " " + str(radius) + " " + str(length) + " 90.0 90.0 90.0    ! cell \n ")
     f.write("12.0                     ! fluid_cut_off \n")
     f.write("12.0                     ! fluid_cnt_cut_off \n")
     f.write("2.96                     ! sigma LJ 12-6 fluid \n")
@@ -40,27 +41,29 @@ def write_input(file_name, chemical_pot, T,nanotube_file):
     return f.close()
 
 
-# Create main folder and change to it
+# General parameters
+seed = "nanotube_10_10"
+T = 293.15
 
+# Create main folder and change to it
 main_folder = str(seed) + "_temp_" + str(T)
 os.mkdir(main_folder)
 os.chdir(main_folder)
 
 bar_to_atm = 0.986923
+bar_to_pa = 100000.0
 
-# Generate series of uvt files
-# General parameters
-seed = "nanotube_10_10"
-T = 293.15
 # Generate files for different pressures (bar)
 pressure_range = [5, 10, 20, 40, 80, 160, 320, 640, 800]
 nanotube_file = "nanotube-10-10-200.xyz"
 
-for P in pressure_range:
-    fug_coeff = fugacity_coeff(temperature-273.15,P*bar_to_atm) # (adimensional)
-    p_eff = fug_coeff * P * 1e5 # In Pascal (converting from bar to Pa)
 
-    chemical_pot = chemical_potential(temperature, p_eff)
+print("T (K), Pideal (Pa), Peff (Pa), chemical_pot (K)")
+for P in pressure_range:
+    fug_coeff = fugacity_coeff(T,P*bar_to_atm) # (adimensional)
+    p_eff = fug_coeff * P * bar_to_pa # In Pascal (converting from bar to Pa)
+
+    chemical_pot = chemical_potential(T, p_eff)
 
     # Create sub folder
     sub_folder = "p_" + '{0:03f}'.format(p_eff)
@@ -72,7 +75,7 @@ for P in pressure_range:
     os.system("cp ../../tmp/" + str(nanotube_file) +  " .")
     os.system("cp ../../tmp/input_file .")
 
-    print(u, preal, P)
+    print(T, P*bar_to_pa, p_eff, chemical_pot, fug_coeff)
     # Write input file
     name = "input_uvt_atomistic.nanomc"
     write_input(name, chemical_pot, T, nanotube_file)
