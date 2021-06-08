@@ -34,7 +34,7 @@ CONTAINS
             END SELECT
 
         CASE ("uvt")
-            READ(input_seed,*) simulation_instance%chemical_pot
+            READ(input_seed,*) simulation_instance%chemical_pot              ! Note that NanoMC read chemical potentials in units of Kelvin (they are divided by kB already)
             SELECT CASE (simulation_instance%model)
             CASE ("atomistic")
                 READ(input_seed,*) simulation_instance%cnt_file
@@ -100,8 +100,8 @@ CONTAINS
             simulation_instance%activity = exp(simulation_instance%chemical_pot / simulation_instance%temperature) &
                     / (simulation_instance%thermal_wav ** 3.0)
 
-            simulation_instance%pressure_reservoir = exp(simulation_instance%chemical_pot*simulation_instance%beta) &
-                    / (simulation_instance%beta * simulation_instance%thermal_wav ** 3.0) * 1e-5
+            simulation_instance%pressure_reservoir = exp(simulation_instance%chemical_pot/simulation_instance%temperature) &
+                    / (simulation_instance%beta * simulation_instance%thermal_wav ** 3.0) 
         END SELECT
     END SUBROUTINE read_input
 

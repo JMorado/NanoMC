@@ -77,7 +77,7 @@ PROGRAM nanomc_uvt
         energy_func_ptr => particle_energy_continuum
     END SELECT
 
-    WRITE(6,'(A,F16.8)') " * Reservoir pressure: ", sim%pressure_reservoir
+    WRITE(6,'(A,F16.8,F16.8,F16.8)') " * Reservoir pressure (Pa, bar, atm): ", sim%pressure_reservoir, sim%pressure_reservoir*1e-5, sim%pressure_reservoir*9.86923e-6
     CALL STD_OUTPUT_STARTING_SIM()
     WRITE(6,'(A15,A15,A15,A15,A15,A15,A15,A15)') " MC sweep", "# particles", "Avg # part", "E (kJ/mol)",&
             "Acc. rate NVT", "Acc. rate uVT", "Frac. NVT", "Frac. uVT"
