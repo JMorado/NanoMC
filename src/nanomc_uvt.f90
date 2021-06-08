@@ -19,7 +19,7 @@ PROGRAM nanomc_uvt
     REAL(8), PARAMETER                  :: prob_disp = 1.0 / 3.0
     REAL(8)                             :: n_acc, n_tot, frac_acc
     PROCEDURE(energy_function), POINTER :: energy_func_ptr => null ()
-    CHARACTER(LEN=100)                  :: traj_file_name, prop_file_name
+    CHARACTER(LEN=100)                  :: traj_file_name, prop_file_name, final_xyz_file
     REAL(8)                             :: n_acc_nvt, n_acc_uvt, n_steps_nvt, n_steps_uvt, n_part_avg
     INTEGER(4) :: o
 
@@ -43,6 +43,7 @@ PROGRAM nanomc_uvt
 
     traj_file_name = trim(sim%output_seed) // ".xyz"
     prop_file_name = trim(sim%output_seed) // ".dat"
+    final_xyz_file = trim(sim%output_seed) // "_final.xyz"
 
 
     ! Restart the random number generator with a given seed
@@ -118,7 +119,7 @@ PROGRAM nanomc_uvt
 
     END DO
 
-    CALL write_xyz(sim, "output_final.xyz")
+    CALL write_xyz(sim, final_xyz_file)
     CALL STD_OUTPUT_END_SIM()
 
     STOP

@@ -50,7 +50,6 @@ CONTAINS
         READ(input_seed,*) simulation_instance%radius
 
         ! Cell
-        simulation_instance%cell_instance = Cell()
         READ(input_seed,*) simulation_instance%cell_instance%a, simulation_instance%cell_instance%b, &
                 simulation_instance%cell_instance%c, simulation_instance%cell_instance%alpha, &
                 simulation_instance%cell_instance%beta, simulation_instance%cell_instance%gamma
@@ -74,7 +73,6 @@ CONTAINS
         ! Input configuration variables
         READ(input_seed,*) simulation_instance%initial_config_type
 
-
         ! Read input file name if initial_config_mode is file
         SELECT CASE (simulation_instance%initial_config_type)
         CASE("file")
@@ -96,13 +94,13 @@ CONTAINS
         CASE("uvt")
             simulation_instance%volume = pi * simulation_instance%radius * simulation_instance%radius &
                     * simulation_instance%length
-            simulation_instance%thermal_wav = (planck*planck*simulation_instance%beta) / (2*pi*2*1.6737236d-27)
+            simulation_instance%thermal_wav = (planck*planck*simulation_instance%beta) / (2*pi*2*1.00794*atomicmass_to_kg)
             simulation_instance%thermal_wav = (simulation_instance%thermal_wav) ** (1/2.)
 
             simulation_instance%activity = exp(simulation_instance%chemical_pot / simulation_instance%temperature) &
                     / (simulation_instance%thermal_wav ** 3.0)
 
-            simulation_instance%pressure_reservoir = exp(simulation_instance%chemical_pot/simulation_instance%temperature) &
+            simulation_instance%pressure_reservoir = exp(simulation_instance%chemical_pot*simulation_instance%beta) &
                     / (simulation_instance%beta * simulation_instance%thermal_wav ** 3.0) * 1e-5
         END SELECT
     END SUBROUTINE read_input

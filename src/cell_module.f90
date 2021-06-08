@@ -3,8 +3,8 @@ MODULE cell_module
 
   TYPE, PUBLIC :: Cell
      ! Axial Lengths and Angles
-     REAL(8), ALLOCATABLE  :: a, b, c                           ! Cell axial lenghts
-     REAL(8), ALLOCATABLE  :: alpha, beta, gamma                ! Cell angles
+     REAL(8)  :: a, b, c                           ! Cell axial lenghts
+     REAL(8)  :: alpha, beta, gamma                ! Cell angles
 
    CONTAINS
      PROCEDURE :: cell_volume => cell_volume
