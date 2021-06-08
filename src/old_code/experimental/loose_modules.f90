@@ -347,7 +347,6 @@ END FUNCTION virial_local
     return
   END FUNCTION FPATH_z
 
-
  SUBROUTINE reflexion(this,dr,coord)
     IMPLICIT NONE
     CLASS(Simulation), INTENT(INOUT)    :: this

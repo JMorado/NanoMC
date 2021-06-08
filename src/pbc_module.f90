@@ -44,7 +44,7 @@ CONTAINS
         !   dr =  displacement( self%disp )
         !   coord_tmp = self%coord(:,o) + dr
         !END DO
-    END SUBROUTINE pbc
+    END SUBROUTINE pbc_z
 
     SUBROUTINE pbc_z_distance(r, length)
         IMPLICIT NONE

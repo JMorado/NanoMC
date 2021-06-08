@@ -13,7 +13,8 @@ CONTAINS
         ! sigma        (in) : distance at which the potential is zero            !
         !========================================================================!
         REAL(8),    INTENT(IN) :: r2, epsilon, sigma
-        REAL(8)                :: lennard_jones_energy, rep_term, attract_term,sigma2
+        REAL(8)                :: lennard_jones_energy
+        REAL(8)                :: rep_term, attract_term,sigma2
 
         ! Squared values
         sigma2 = sigma*sigma
@@ -146,7 +147,6 @@ CONTAINS
 
             ! Apply PBC
             CALL pbc_z_distance(r, simulation_instance%length)
-
 
             ! Compute r squared of the periodic distance
             r2 = SUM(r*r)

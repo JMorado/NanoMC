@@ -20,13 +20,14 @@ PROGRAM nanomc_uvt
     REAL(8)                             :: n_acc, n_tot, frac_acc
     PROCEDURE(energy_function), POINTER :: energy_func_ptr => null ()
     CHARACTER(LEN=100)                  :: traj_file_name, prop_file_name
-    REAL(8)                             :: n_acc_nvt, n_acc_uvt, n_steps_nvt, n_steps_uvt
+    REAL(8)                             :: n_acc_nvt, n_acc_uvt, n_steps_nvt, n_steps_uvt, n_part_avg
     INTEGER(4) :: o
 
 
     CALL std_output_initialize()
 
     ! Number of accepted steps, number of total steps
+    n_part_avg = 0.0
     n_acc_nvt = 0.0
     n_acc_uvt = 0.0
     n_steps_nvt = 0.0
@@ -77,7 +78,7 @@ PROGRAM nanomc_uvt
 
     WRITE(6,'(A,F16.8)') " * Reservoir pressure: ", sim%pressure_reservoir
     CALL STD_OUTPUT_STARTING_SIM()
-    WRITE(6,'(A15,A15,A15,A15,A15,A15,A15)') " MC sweep", "# particles", "E (kJ/mol)",&
+    WRITE(6,'(A15,A15,A15,A15,A15,A15,A15,A15)') " MC sweep", "# particles", "Avg # part", "E (kJ/mol)",&
             "Acc. rate NVT", "Acc. rate uVT", "Frac. NVT", "Frac. uVT"
 
 
@@ -102,9 +103,11 @@ PROGRAM nanomc_uvt
             END IF
         END IF
 
+
+        n_part_avg = n_part_avg + sim%npart
         ! Write properties to output
         IF (MOD(i,sim%ntwx) .eq. 0) THEN
-            WRITE(6,'(I15,I15,E15.6, F15.4, F15.4, F15.4, F15.4)') i, sim%npart, total_system_energy(sim),&
+            WRITE(6,'(I15,I15, F15.4, E15.6, F15.4, F15.4, F15.4, F15.4)') i, sim%npart, n_part_avg/i, total_system_energy(sim),&
                     n_acc_nvt/n_steps_nvt, n_acc_uvt/n_steps_uvt, n_steps_nvt/i, n_steps_uvt/i
         END IF
 
