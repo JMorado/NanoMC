@@ -123,18 +123,18 @@ CONTAINS
         total_system_energy = 0
         DO k=1,simulation_instance%npart
             total_system_energy = total_system_energy &
-                    + particle_energy_atomistic(simulation_instance, k, simulation_instance%coord(:,k)) / 2.0d0
+                    + particle_energy_atomistic(simulation_instance, k, simulation_instance%coord(:,k), .false.) / 2.0d0
         END DO
 
 
         ! Add Lennard-Jones 12-6 Tail correction
         IF (energy_tail_correction .eqv. .True.) THEN
-            ! Add bulk fluid correction
+            ! Add bulk fluid correction (multiply by N fluid particles)
             total_system_energy = total_system_energy &
                     + simulation_instance%npart &
-                    * lennard_jones_energy_tail_fluid_solid(simulation_instance%fluid_cut_off, &
+                    * lennard_jones_energy_tail_bulk_fluid(simulation_instance%fluid_cut_off, &
                                     simulation_instance%eps_fluid, simulation_instance%sigma_fluid,simulation_instance%density_fluid)
-            ! Add fluid-solid correction
+            ! Add fluid-solid correction (multiply by N CNT atoms)
             total_system_energy = total_system_energy &
                     + simulation_instance%ncnt &
                             * lennard_jones_energy_tail_fluid_solid(simulation_instance%fluid_cut_off, &
@@ -212,22 +212,31 @@ CONTAINS
         RETURN
     END FUNCTION particle_energy_continuum
 
-    FUNCTION particle_energy_atomistic(simulation_instance, index, coord)
+    FUNCTION particle_energy_atomistic(simulation_instance, index, coord, energy_tail_correction)
         !========================================================================!
         ! This function calculates the particle Lennard-Jones 12-6 energy        !
         ! for an atomistic nanotube representation                               !
+        !                                                                        !
+        ! LJ 12-6 tail energy correction is not included by default              !
         !------------------------------------------------------------------------!
-        ! simulation_instance (in) : Simulation instance                         !
-        ! index               (in) : index of the particle                       !
-        ! coord(3)            (in) : coordinates of the particle                 !
+        ! simulation_instance    (in) : Simulation instance                      !
+        ! index                  (in) : index of the particle                    !
+        ! coord(3)               (in) : coordinates of the particle              !
+        ! energy_tail_correction (in) : flag to LJ energy tail correction (optnl)!
         !========================================================================!
         IMPLICIT NONE
-        TYPE(Simulation),  INTENT(IN) :: simulation_instance
-        REAL(8),           INTENT(IN) :: coord(:)
-        INTEGER(4),        INTENT(IN) :: index
-        REAL(8)                       :: r(3)
-        REAL(8)                       :: particle_energy_atomistic, energy_nt_particle, energy_particle_fluid, r2
-        INTEGER(4)                    :: k, l
+        TYPE(Simulation),     INTENT(IN) :: simulation_instance
+        REAL(8),              INTENT(IN) :: coord(:)
+        INTEGER(4),           INTENT(IN) :: index
+        LOGICAL(1), OPTIONAL, INTENT(IN) :: energy_tail_correction
+        REAL(8)                          :: r(3)
+        REAL(8)                          :: particle_energy_atomistic, energy_nt_particle, energy_particle_fluid, r2
+        INTEGER(4)                       :: k, l
+
+
+        IF (.not. PRESENT(energy_tail_correction)) THEN
+            energy_tail_correction = .false.
+        END IF
 
         !========================================================================!
         !                         Fluid-fluid LJ 12-6 energy                     !
@@ -291,6 +300,19 @@ CONTAINS
         !                            Total LJ 12-6 energy                        !
         !========================================================================!
         particle_energy_atomistic = energy_nt_particle + energy_particle_fluid
+
+        ! Add Lennard-Jones 12-6 Tail correction
+        IF (energy_tail_correction .eqv. .True.) THEN
+            ! Add bulk fluid correction (multiply by N fluid particles)
+            particle_energy_atomistic = particle_energy_atomistic &
+                            * lennard_jones_energy_tail_bulk_fluid(simulation_instance%fluid_cut_off, &
+                                    simulation_instance%eps_fluid, simulation_instance%sigma_fluid,simulation_instance%density_fluid)
+
+            ! Add fluid-solid correction (multiply by N CNT atoms)
+            particle_energy_atomistic = particle_energy_atomistic &
+                            * lennard_jones_energy_tail_fluid_solid(simulation_instance%fluid_cut_off, &
+                                    simulation_instance%eps_cnt, simulation_instance%sigma_cnt,simulation_instance%density_cnt)
+        END IF
 
         RETURN
     END FUNCTION particle_energy_atomistic
