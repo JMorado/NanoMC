@@ -141,7 +141,6 @@ CONTAINS
                                     simulation_instance%eps_cnt, simulation_instance%sigma_cnt,simulation_instance%density_cnt)
         END IF
 
-
         RETURN
     END FUNCTION total_system_energy
 

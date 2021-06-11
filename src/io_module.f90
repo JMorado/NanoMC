@@ -88,7 +88,11 @@ CONTAINS
         simulation_instance%volume = pi * simulation_instance%radius * simulation_instance%radius * simulation_instance%length
         simulation_instance%volume_eff = pi * (simulation_instance%radius-simulation_instance%sigma_cnt)**2 &
                 * simulation_instance%length
-        simulation_instance%density = simulation_instance%npart / simulation_instance%volume_eff
+
+        ! Density calculation
+        simulation_instance%density_fuid = simulation_instance%npart / simulation_instance%volume
+        simulation_instance%density_cnt = simulation_instance%ncnt / simulation_instance%volume
+
 
         SELECT CASE (simulation_instance%ensemble)
         CASE("uvt")
